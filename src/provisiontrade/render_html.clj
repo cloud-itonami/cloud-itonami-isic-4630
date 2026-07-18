@@ -1,0 +1,315 @@
+(ns provisiontrade.render-html
+  "Build-time HTML renderer for `docs/samples/operator-console.html`.
+
+  Closes flagship checklist item 2 (com-junkawasaki/root ADR-2607189300,
+  Wave5 rollout ledger). This repo previously had a HAND-TYPED
+  `docs/samples/operator-console.html` (committed in 8589fcc, no
+  generator behind it at all). This namespace instead drives the REAL
+  actor stack (`provisiontrade.operation` -> `provisiontrade.governor`
+  -> `provisiontrade.store`) through a scenario adapted from this
+  repo's own `provisiontrade.sim` demo driver (`clojure -M:dev:run`,
+  confirmed by actually running it before this file was written: every
+  id it uses (po-1..po-12) matches `provisiontrade.store/demo-data`'s
+  seeded provision-orders exactly, and every disposition it produces
+  (auto-commit / escalate+approve / HARD hold, and the exact `:rule` on
+  each hold) matches `provisiontrade.governor`'s own documented checks
+  precisely -- unlike `cloud-itonami-isic-851`'s `schoolops.sim`, this
+  repo's sim driver was safe to mine directly rather than author from
+  scratch), trimmed to a representative subset (one full clean
+  lifecycle per consignment category -- `:food`/`:beverage-alcoholic`/
+  `:tobacco`/`:beverage-non-alcoholic` -- covering both the phase-3
+  `:order/intake` auto-commit and the three always-escalate actuation
+  ops, plus five DISTINCT HARD-hold reasons that never reach a human)
+  and rendered deterministically -- no invented numbers, no timestamps
+  in the page content, byte-identical across reruns against the same
+  seed (verified by diffing two consecutive runs before shipping).
+
+  Usage: `clojure -M:dev:render-html [out-file]`
+  (default `docs/samples/operator-console.html`)."
+  (:require [clojure.string :as str]
+            [provisiontrade.store :as store]
+            [provisiontrade.operation :as op]
+            [langgraph.graph :as g]))
+
+;; ----------------------------- harness (unchanged across every repo
+;; in this cluster -- do not rewrite, only copy) -----------------------
+
+(def ^:private operator
+  {:actor-id "op-1" :actor-role :trading-supervisor :phase 3})
+
+(defn- exec! [actor tid request]
+  (g/run* actor {:request request :context operator} {:thread-id tid}))
+
+(defn- approve! [actor tid]
+  (g/run* actor {:approval {:status :approved :by "op-1"}}
+          {:thread-id tid :resume? true}))
+
+(defn run-demo!
+  "Runs a fresh seeded store through a scenario mixing every disposition
+  this actor can reach, using ONLY real provision-order ids from
+  `provisiontrade.store/demo-data`:
+
+  po-1 (JPN, `:food`), po-7 (JPN, `:beverage-alcoholic`), po-9 (JPN,
+  `:tobacco`) and po-12 (JPN, `:beverage-non-alcoholic`) each walk the
+  FULL clean lifecycle -- one order per consignment category, so all
+  THREE regulatory regimes this vertical's governor enforces
+  (food-safety, alcohol-excise, tobacco-excise; `:beverage-non-
+  alcoholic` deliberately shares po-1's food-safety regime rather than
+  getting a fourth) are exercised for real: a `:order/intake` directory-
+  normalization patch is a phase-3, no-capital-risk auto-commit
+  (governor clean, `:order/intake` is the ONLY op in phase 3's `:auto`
+  set); `:regulatory/verify` (each jurisdiction/category pair has a
+  real spec-basis in `provisiontrade.facts`) ALWAYS escalates (no phase
+  ever adds it to an `:auto` set) and is approved by a human trading
+  supervisor; `:delivery/dispatch` and `:invoice/settle` -- the two
+  REAL-WORLD actuation events this actor performs (product physically
+  leaving the wholesale warehouse / real money moving) -- ALSO ALWAYS
+  escalate (the governor's own `high-stakes` gate AND the phase table
+  agree, independently, that actuation is never auto, at any phase) and
+  are each approved, producing one draft provision-delivery record and
+  one draft provision-invoice record per order.
+
+  Then FIVE distinct HARD-hold reasons, none of which ever reach a
+  human (a human approver cannot override a HARD violation):
+    - po-2 (jurisdiction ATL, not in `provisiontrade.facts/catalog`):
+      `:regulatory/verify` HARD-holds on `:no-spec-basis` -- the
+      advisor may not invent a jurisdiction's food-safety/excise
+      requirements.
+    - po-3 (`:credit-cleared? false` in the seed data): verified first
+      (clean escalate+approve, so evidence is on file and this HARD
+      hold below is isolated to the credit-clearance check alone),
+      then `:delivery/dispatch` HARD-holds on `:credit-uncleared`.
+    - po-6 (`:food-safety-certificate? false`, `:consignment-category
+      :food`): verified, then `:delivery/dispatch` HARD-holds on
+      `:food-safety-certificate-missing` -- the check with NO analog in
+      the fuel-wholesale/general-trading/commission-brokerage siblings.
+    - po-8 (`:alcohol-excise-license? false`, `:consignment-category
+      :beverage-alcoholic`): verified, then `:delivery/dispatch`
+      HARD-holds on `:alcohol-excise-license-missing` -- a SEPARATE
+      rule from the food-safety check above, deliberately (different
+      statute, different agency).
+    - po-10 (`:tobacco-excise-registration? false`,
+      `:consignment-category :tobacco`): verified, then
+      `:delivery/dispatch` HARD-holds on
+      `:tobacco-excise-age-verification-missing` -- SEPARATE again from
+      both checks above.
+
+  Returns the resulting store -- every field `render` below reads is
+  real governor/store output, not a hand-typed copy."
+  []
+  (let [db (store/seed-db)
+        actor (op/build db)]
+
+    ;; po-1 (JPN, food, clean): full lifecycle.
+    (exec! actor "po1-intake" {:op :order/intake :subject "po-1"
+                                :patch {:id "po-1" :counterparty "Akita Provisions Wholesale Co"}})
+    (exec! actor "po1-verify" {:op :regulatory/verify :subject "po-1"})
+    (approve! actor "po1-verify")
+    (exec! actor "po1-dispatch" {:op :delivery/dispatch :subject "po-1"})
+    (approve! actor "po1-dispatch")
+    (exec! actor "po1-invoice" {:op :invoice/settle :subject "po-1"})
+    (approve! actor "po1-invoice")
+
+    ;; po-7 (JPN, beverage-alcoholic, clean): full lifecycle -- a
+    ;; DIFFERENT regulatory regime (alcohol excise, not food-safety)
+    ;; from po-1 above, same jurisdiction.
+    (exec! actor "po7-intake" {:op :order/intake :subject "po-7"
+                                :patch {:id "po-7" :counterparty "Golden Hills Spirits Traders"}})
+    (exec! actor "po7-verify" {:op :regulatory/verify :subject "po-7"})
+    (approve! actor "po7-verify")
+    (exec! actor "po7-dispatch" {:op :delivery/dispatch :subject "po-7"})
+    (approve! actor "po7-dispatch")
+    (exec! actor "po7-invoice" {:op :invoice/settle :subject "po-7"})
+    (approve! actor "po7-invoice")
+
+    ;; po-9 (JPN, tobacco, clean): full lifecycle -- the THIRD
+    ;; regulatory regime (tobacco excise + age-verification, BOTH
+    ;; required).
+    (exec! actor "po9-intake" {:op :order/intake :subject "po-9"
+                                :patch {:id "po-9" :counterparty "Ironwood Tobacco Traders"}})
+    (exec! actor "po9-verify" {:op :regulatory/verify :subject "po-9"})
+    (approve! actor "po9-verify")
+    (exec! actor "po9-dispatch" {:op :delivery/dispatch :subject "po-9"})
+    (approve! actor "po9-dispatch")
+    (exec! actor "po9-invoice" {:op :invoice/settle :subject "po-9"})
+    (approve! actor "po9-invoice")
+
+    ;; po-12 (JPN, beverage-non-alcoholic, clean): full lifecycle --
+    ;; shares po-1's food-safety regime (deliberately many-to-one), NOT
+    ;; a fourth separate regime.
+    (exec! actor "po12-intake" {:op :order/intake :subject "po-12"
+                                 :patch {:id "po-12" :counterparty "Lighthouse Beverage Traders"}})
+    (exec! actor "po12-verify" {:op :regulatory/verify :subject "po-12"})
+    (approve! actor "po12-verify")
+    (exec! actor "po12-dispatch" {:op :delivery/dispatch :subject "po-12"})
+    (approve! actor "po12-dispatch")
+    (exec! actor "po12-invoice" {:op :invoice/settle :subject "po-12"})
+    (approve! actor "po12-invoice")
+
+    ;; po-2 (ATL): no official spec-basis in provisiontrade.facts ->
+    ;; HARD hold on :no-spec-basis, never reaches a human.
+    (exec! actor "po2-verify" {:op :regulatory/verify :subject "po-2"})
+
+    ;; po-3: verify JPN/food first (clean escalate+approve) so evidence
+    ;; is on file and the credit-uncleared hold below is isolated.
+    (exec! actor "po3-verify" {:op :regulatory/verify :subject "po-3"})
+    (approve! actor "po3-verify")
+    (exec! actor "po3-dispatch" {:op :delivery/dispatch :subject "po-3"})
+
+    ;; po-6 (food): verify first, then dispatch -> HARD hold on
+    ;; :food-safety-certificate-missing, never reaches a human.
+    (exec! actor "po6-verify" {:op :regulatory/verify :subject "po-6"})
+    (approve! actor "po6-verify")
+    (exec! actor "po6-dispatch" {:op :delivery/dispatch :subject "po-6"})
+
+    ;; po-8 (beverage-alcoholic): verify first, then dispatch -> HARD
+    ;; hold on :alcohol-excise-license-missing, never reaches a human.
+    (exec! actor "po8-verify" {:op :regulatory/verify :subject "po-8"})
+    (approve! actor "po8-verify")
+    (exec! actor "po8-dispatch" {:op :delivery/dispatch :subject "po-8"})
+
+    ;; po-10 (tobacco): verify first, then dispatch -> HARD hold on
+    ;; :tobacco-excise-age-verification-missing, never reaches a human.
+    (exec! actor "po10-verify" {:op :regulatory/verify :subject "po-10"})
+    (approve! actor "po10-verify")
+    (exec! actor "po10-dispatch" {:op :delivery/dispatch :subject "po-10"})
+
+    db))
+
+;; ----------------------------- rendering -----------------------------
+
+(defn- esc [v]
+  (-> (str v)
+      (str/replace "&" "&amp;")
+      (str/replace "<" "&lt;")
+      (str/replace ">" "&gt;")))
+
+(defn- last-fact-for [ledger subject-id]
+  (last (filter #(= (:subject %) subject-id) ledger)))
+
+(defn- status-cell [ledger subject-id]
+  (let [f (last-fact-for ledger subject-id)]
+    (cond
+      (nil? f) "<span class=\"muted\">no activity</span>"
+      (= :committed (:t f)) "<span class=\"ok\">committed</span>"
+      (= :approval-granted (:t f)) "<span class=\"ok\">approved &amp; committed</span>"
+      (= :governor-hold (:t f))
+      (let [rule (-> f :violations first :rule)]
+        (str "<span class=\"critical\">HARD hold &middot; " (esc (name (or rule :unknown))) "</span>"))
+      (= :approval-requested (:t f)) "<span class=\"warn\">awaiting approval</span>"
+      :else "<span class=\"muted\">in progress</span>")))
+
+(defn- provision-order-row [ledger {:keys [id order-id consignment-category counterparty
+                                            jurisdiction dispatched? invoiced?]}]
+  (format "        <tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>"
+          (esc id) (esc order-id) (esc (name consignment-category)) (esc counterparty) (esc jurisdiction)
+          (if dispatched? "dispatched" "not dispatched") (if invoiced? "invoiced" "not invoiced")
+          (status-cell ledger id)))
+
+(defn- ledger-row [{:keys [t op subject disposition basis]}]
+  (format "        <tr><td>%s</td><td><code>%s</code></td><td>%s</td><td>%s</td></tr>"
+          (esc (name t)) (esc (name (or op :n-a))) (esc subject)
+          (esc (or (some->> basis (map #(if (keyword? %) (name %) %)) (str/join ", "))
+                    (some-> disposition name) ""))))
+
+(defn- record-row [prefix {:strs [record_id provision_order_id jurisdiction kind immutable]}]
+  (format "        <tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>"
+          (esc prefix) (esc record_id) (esc provision_order_id) (esc jurisdiction)
+          (if immutable "<span class=\"ok\">immutable draft</span>" (esc kind))))
+
+(def ^:private action-gate-rows
+  ;; Static description of this actor's own op contract
+  ;; (`provisiontrade.governor`/`provisiontrade.phase`) -- documentation
+  ;; of fixed behavior, not runtime telemetry, so it is legitimately
+  ;; hand-described rather than derived from a live run.
+  ["        <tr><td><code>:order/intake</code></td><td><span class=\"ok\">phase-3 auto-commit when clean, no capital risk yet -- the ONLY auto-eligible op in this domain</span></td></tr>"
+   "        <tr><td><code>:regulatory/verify</code></td><td><span class=\"warn\">ALWAYS human approval when clean &middot; spec-basis independently checked against <code>provisiontrade.facts</code>, never fabricated</span></td></tr>"
+   "        <tr><td><code>:delivery/dispatch</code></td><td><span class=\"warn\">ALWAYS human approval &middot; real warehouse dispatch act &middot; credit-clearance, contract-on-file, regulatory-class-specific certificate/licence/registration and sanctions-screening independently re-verified, never auto at any phase</span></td></tr>"
+   "        <tr><td><code>:invoice/settle</code></td><td><span class=\"warn\">ALWAYS human approval &middot; real invoice-settlement act (money moves) &middot; sanctions-screening + double-invoice guard independently enforced, never auto at any phase</span></td></tr>"])
+
+(defn render
+  "Renders the full operator-console.html document from a store `db`
+  that has already run `run-demo!` (or any other real scenario)."
+  [db]
+  (let [ledger (vec (store/ledger db))
+        provision-orders (store/all-provision-orders db)
+        provision-order-rows (str/join "\n" (map (partial provision-order-row ledger) provision-orders))
+        ledger-rows (str/join "\n" (map ledger-row ledger))
+        delivery-rows (str/join "\n" (map (partial record-row "delivery") (store/delivery-history db)))
+        invoice-rows (str/join "\n" (map (partial record-row "invoice") (store/invoice-history db)))]
+    (str
+     "<html><head><meta charset=\"utf-8\"><title>cloud-itonami-isic-4630 &middot; wholesale of food, beverages and tobacco</title><style>\n"
+     "table { width: 100%; border-collapse: collapse; font-size: 14px; }\n"
+     ".ok { color: #137a3f; }\n"
+     "body { font-family: system-ui,-apple-system,sans-serif; margin: 0; color: #1a1a1a; background: #fafafa; }\n"
+     "header.bar { display: flex; align-items: center; gap: 12px; padding: 12px 20px; background: #fff; border-bottom: 1px solid #e5e5e5; }\n"
+     "th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #f0f0f0; }\n"
+     "h2 { margin-top: 0; font-size: 15px; }\n"
+     ".warn { color: #b25c00; background: #fff8e1; padding: 2px 6px; border-radius: 4px; }\n"
+     "main { max-width: 980px; margin: 24px auto; padding: 0 20px; }\n"
+     "header.bar h1 { font-size: 18px; margin: 0; font-weight: 600; }\n"
+     ".muted { color: #888; font-size: 13px; }\n"
+     ".critical { color: #fff; background: #b3261e; padding: 2px 6px; border-radius: 4px; font-weight: 600; }\n"
+     ".card { background: #fff; border: 1px solid #e5e5e5; border-radius: 8px; padding: 16px; margin-bottom: 16px; }\n"
+     ".err { color: #b3261e; background: #fbe9e7; padding: 2px 6px; border-radius: 4px; }\n"
+     "th { font-weight: 600; color: #555; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; }\n"
+     "header.bar .badge { margin-left: auto; font-size: 12px; color: #666; }\n"
+     "code { font-size: 12px; background: #f4f4f4; padding: 1px 4px; border-radius: 3px; }\n"
+     "</style></head><body>\n"
+     "<header class=\"bar\">\n"
+     "  <h1>Wholesale of food, beverages and tobacco (ISIC 4630) — Operator Console</h1>\n"
+     "  <span class=\"badge\">read-only sample · governor-gated · dispatch/invoice settlement always human-approved</span>\n"
+     "</header>\n"
+     "<main>\n"
+     "  <section class=\"card\">\n"
+     "    <h2>Provision-orders</h2>\n"
+     "    <p class=\"muted\">Demo snapshot — build-time-generated from <code>provisiontrade.store</code> via <code>provisiontrade.render-html</code> (<code>clojure -M:dev:render-html</code>), regenerated nightly.</p>\n"
+     "    <table>\n"
+     "      <thead><tr><th>Provision-order</th><th>Order #</th><th>Category</th><th>Counterparty</th><th>Jurisdiction</th><th>Dispatch</th><th>Invoice</th><th>Last op status</th></tr></thead>\n"
+     "      <tbody>\n"
+     provision-order-rows "\n"
+     "      </tbody>\n"
+     "    </table>\n"
+     "  </section>\n"
+     "  <section class=\"card\">\n"
+     "    <h2>Draft provision-delivery / provision-invoice records</h2>\n"
+     "    <p class=\"muted\">Unsigned drafts only — the operator's own act of dispatching product or settling an invoice is outside this actor's authority (see README <code>Actuation</code>).</p>\n"
+     "    <table>\n"
+     "      <thead><tr><th>Kind</th><th>Record id</th><th>Provision-order</th><th>Jurisdiction</th><th>Status</th></tr></thead>\n"
+     "      <tbody>\n"
+     delivery-rows (when (and (seq delivery-rows) (seq invoice-rows)) "\n")
+     invoice-rows "\n"
+     "      </tbody>\n"
+     "    </table>\n"
+     "  </section>\n"
+     "  <section class=\"card\">\n"
+     "    <h2>Action gate (Provision Trading Governor)</h2>\n"
+     "    <p class=\"muted\">HARD holds cannot be overridden by a human approver. Spec-basis, credit-clearance, contract-on-file, the THREE regulatory-class certificate/licence/registration checks (food-safety, alcohol-excise, tobacco-excise/age-verification) and sanctions screening are independently recomputed, never trusted from the advisor's proposal; a real dispatch or invoice settlement is always a human trading supervisor's call, at every rollout phase.</p>\n"
+     "    <table>\n"
+     "      <thead><tr><th>Op</th><th>Gate</th></tr></thead>\n"
+     "      <tbody>\n"
+     (str/join "\n" action-gate-rows) "\n"
+     "      </tbody>\n"
+     "    </table>\n"
+     "  </section>\n"
+     "  <section class=\"card\">\n"
+     "    <h2>Audit ledger (this run)</h2>\n"
+     "    <p class=\"muted\">Append-only decision-fact log — every proposal, hold and commit this scenario produced.</p>\n"
+     "    <table>\n"
+     "      <thead><tr><th>Fact</th><th>Op</th><th>Subject</th><th>Basis</th></tr></thead>\n"
+     "      <tbody>\n"
+     ledger-rows "\n"
+     "      </tbody>\n"
+     "    </table>\n"
+     "  </section>\n"
+     "</main>\n"
+     "</body></html>\n")))
+
+(defn -main [& args]
+  (let [out (or (first args) "docs/samples/operator-console.html")
+        db (run-demo!)
+        html (render db)]
+    (spit out html)
+    (println "wrote" out "(" (count (store/ledger db)) "ledger facts,"
+             (count (store/delivery-history db)) "delivery drafts,"
+             (count (store/invoice-history db)) "invoice drafts )")))
