@@ -70,6 +70,75 @@ build the compliance layer from scratch.
 - support retainer with SLA
 - ERP and accounts-receivable integration
 
+| Package | Customer | Price shape |
+|---|---|---|
+| Self-host starter | wholesaler IT/operations lead | setup fee + optional support retainer |
+| Managed Starter | one regional food/beverage/tobacco wholesaler, 1 拠点, 取引先 50–200 社 | ¥35,000/月 flat |
+
+**Market-anchored (2026-08-10)**: benchmarked against 6 real products a
+mid-size Japanese food/liquor wholesaler would actually evaluate, at an
+assumed size of one distribution centre, 50–200 trading counterparties,
+5–10 internal users and roughly ¥10M monthly trade volume. **4 of the 6
+publish real numbers; 2 disclose nothing.**
+
+Published:
+
+- **Bカート** (Dai) — ライトプラン ¥9,800/月 (商品 500 / 会員 50), プラン10
+  ¥19,800/月, プラン30 ¥29,800/月, プラン50 ¥39,800/月, プラン100 ¥49,800/月,
+  プラン300 ¥79,800/月, 初期費用 ¥80,000 全プラン共通 (税別) —
+  <https://bcart.jp/plan/>. At the assumed size this lands at
+  **¥19,800–29,800/月**.
+- **BtoBプラットフォーム受発注** (インフォマート), seller side — the pricing
+  page itself shows no figures, but the 2024 料金改定 notice discloses the
+  seller-side scheme as 「4段階従量制（上限は15万円）」 with a worked example of
+  月間取引額 1,000万円 → 「月額使用料（従量_1 + 従量_2）＝57,500円（税別）」 —
+  <https://corp.infomart.co.jp/news/20240215_5330/>. At the assumed size:
+  **~¥57,500/月**.
+- **Cin7 Core** — Standard $349/month (5 users, 6,000 sale orders/year),
+  Pro $599/month, Advanced $1,199/month; Cin7 Omni is contact-sales —
+  <https://www.cin7.com/pricing/>. At ~¥150/$: **¥52,350–89,850/月**.
+- **FoodDocs** (food-safety / HACCP evidence) — Lite $99/site/月,
+  Standard $199/site/月, Professional $299/site/月, Enterprise contact-sales —
+  <https://www.fooddocs.com/pricing>. One site at Standard: **~¥29,850/月**.
+
+Not disclosed (an observation, not a gap):
+
+- **CO-NECT** (受注側) — 非公開. The plan page states only 「基本料金は取引先数、
+  月間受注数に応じて変動します」 and 「ご契約期間は1年間、年間でのご一括でのお支払い」;
+  the figures are an image and an individual quote —
+  <https://biz.conct.jp/supplier/lp/plan/>.
+- **TANOMU** (インフォマート) — 非公開. 「利用料金は初期費用と月額費用で構成されます」
+  「月額料金は月の受注件数に応じて変動いたします」「詳しくはお問い合わせください」 —
+  <https://www.infomart.co.jp/tanomu/price/index.asp>.
+
+The measured band at the assumed size is therefore **¥19,800–89,850/月**.
+**¥35,000/月 sits in the lower third of that band, and deliberately so.**
+The top of the band belongs to products whose core value this actor does not
+supply: Bカート's is a buyer-facing product catalogue, Cin7's is inventory and
+purchasing, and インフォマート's seller-side fee is metered on trade value. This
+actor holds no inventory ledger, no EC catalogue, no accounts posting, and
+charges nothing on trade value — pricing at those levels would bill for
+functions that are not shipped. It does, however, carry two things the
+order-intake floor (¥19,800) does not: a per-jurisdiction check that branches
+across three separate regulatory regimes by consignment category (food-safety
+certificate, alcohol excise licence, tobacco excise registration +
+age-verification, plus sanctions and credit clearance), and an immutable audit
+ledger whose HOLDs a human approver cannot override. That is a superset of
+what FoodDocs charges ~¥29,850/月/site for on food safety alone, which is why
+¥35,000/月 sits just above it rather than at the ¥19,800 portal floor.
+
+No portfolio-uniform ¥50,000–150,000/月 figure was inherited into this file,
+and none was introduced: that range was anchored on HR/recruiting/CRM per-seat
+SaaS and has no evidenced relationship to wholesale order-intake pricing.
+
+**Subscribe (2026-08-10)**: a live Stripe Payment Link for the Managed Starter
+tier (¥35,000/月 flat) is available now —
+[**subscribe to Managed Starter**](https://buy.stripe.com/8x214o1IbgZW8PubaaeEo0b).
+This is a no-code Stripe-hosted checkout; nothing in this repo's actor code
+changed. **No wholesaler has claimed or subscribed to this tier yet — this is
+a live, working checkout with zero paid tenants, not a claim of existing
+revenue.**
+
 ## The `:provision-trading-governor` Decision Rule
 
 This blueprint's `:itonami.blueprint/governor` is `:provision-trading-
