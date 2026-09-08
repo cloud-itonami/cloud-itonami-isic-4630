@@ -29,7 +29,7 @@
   beverage or tobacco product, or settling a real invoice itself (that
   is `provisiontrade.operation`'s `:delivery/dispatch`/
   `:invoice/settle`, always human-gated -- see README `Actuation`)."
-  (:require [clojure.string :as str]))
+  (:require [kotoba.lang.text :as str]))
 
 (defn- unsigned-certificate
   "Every certificate this actor produces is UNSIGNED -- signature is
@@ -66,7 +66,7 @@
     (throw (ex-info "provision-delivery: jurisdiction required" {})))
   (when (< sequence 0)
     (throw (ex-info "provision-delivery: sequence must be >= 0" {})))
-  (let [delivery-number (str (str/upper-case jurisdiction) "-DELIVERY-" (zero-pad sequence 6))
+  (let [delivery-number (str (str/upper jurisdiction) "-DELIVERY-" (zero-pad sequence 6))
         record {"record_id" delivery-number
                 "kind" "provision-delivery-draft"
                 "provision_order_id" provision-order-id
@@ -92,7 +92,7 @@
     (throw (ex-info "provision-invoice: jurisdiction required" {})))
   (when (< sequence 0)
     (throw (ex-info "provision-invoice: sequence must be >= 0" {})))
-  (let [invoice-number (str (str/upper-case jurisdiction) "-INVOICE-" (zero-pad sequence 6))
+  (let [invoice-number (str (str/upper jurisdiction) "-INVOICE-" (zero-pad sequence 6))
         record {"record_id" invoice-number
                 "kind" "provision-invoice-draft"
                 "provision_order_id" provision-order-id
