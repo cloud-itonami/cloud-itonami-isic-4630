@@ -110,7 +110,7 @@ wrong-category regulatory clearance, a sanctions screening suppressed
 to force a delivery through, or an invoice posted without a human
 sign-off.
 
-## Feel the Decision Gate: `clojure -M:dev:run`
+## Feel the Decision Gate: `kbb -M:dev:run`
 
 This vertical has no companion playable prototype. The fastest hands-on
 way to feel why the `:provision-trading-governor` gate exists is the

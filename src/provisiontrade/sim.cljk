@@ -1,5 +1,5 @@
 (ns provisiontrade.sim
-  "Demo driver -- `clojure -M:dev:run`. Walks FOUR clean provision-orders
+  "Demo driver -- `kbb -M:dev:run`. Walks FOUR clean provision-orders
   (one `:food` order, one `:beverage-non-alcoholic` order, one
   `:beverage-alcoholic` order, one `:tobacco` order) through intake ->
   regulatory verification -> delivery (escalate/approve/commit) ->
