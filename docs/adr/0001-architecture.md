@@ -239,7 +239,7 @@ discipline every prior governor's guards establish, informed by
 `provisiontrade.store/Store` is implemented by both `MemStore` (atom-
 backed, default for dev/tests/demo) and `DatomicStore` (`langchain.db`-
 backed), proven to satisfy the same contract in
-`test/provisiontrade/store_contract_test.clj`. The ledger stays
+`test/provisiontrade/store_contract_test.cljk`. The ledger stays
 append-only on every backend: which provision-order was verified for a
 jurisdiction/regulatory-class with no official spec-basis, which
 counterparty had credit-uncleared / no contract / a missing food-safety
@@ -363,7 +363,7 @@ terms (warehouse automation is real and load-bearing for THIS actor's
   future vertical whose ISIC code spans more consignment/product
   categories than genuinely distinct regulatory regimes.
 - `MemStore` || `DatomicStore` parity is proven by
-  `test/provisiontrade/store_contract_test.clj`.
+  `test/provisiontrade/store_contract_test.cljk`.
 - The demo (`clojure -M:dev:run`) walks FOUR clean lifecycles (one food
   order, one non-alcoholic-beverage order, one alcoholic-beverage
   order, one tobacco order) end-to-end, plus every HARD-hold scenario

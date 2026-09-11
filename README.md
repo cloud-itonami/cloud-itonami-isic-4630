@@ -52,7 +52,7 @@ processed food AND non-alcoholic beverages), alcohol excise/licensing
 (alcoholic beverages only), and tobacco excise/age-verification
 (tobacco only) -- extending the agri-wholesale sibling's two-way
 phytosanitary/animal-health split to a three-way split. See
-`src/provisiontrade/facts.cljc` and `src/provisiontrade/governor.cljc`
+`src/provisiontrade/facts.cljk` and `src/provisiontrade/governor.cljk`
 for how this is modeled: a `:consignment-category` (`:food` |
 `:beverage-non-alcoholic` | `:beverage-alcoholic` | `:tobacco`) on
 every `provision-order`, a jurisdiction catalog keyed by BOTH
@@ -116,7 +116,7 @@ phase, by construction.** Two independent layers enforce this
 high-stakes gate and `provisiontrade.phase`'s phase table, which never
 puts either op in any phase's `:auto` set) -- see
 `provisiontrade.phase`'s docstring and
-`test/provisiontrade/phase_test.clj`'s
+`test/provisiontrade/phase_test.cljk`'s
 `delivery-dispatch-never-auto-at-any-phase`/
 `invoice-settle-never-auto-at-any-phase`. The actor may draft, check
 and recommend; a human trading supervisor is always the one who
@@ -231,14 +231,14 @@ robotics/identity/forms/dmn/bpmn/audit-ledger stack.
 
 | File | Role |
 |---|---|
-| `src/provisiontrade/store.cljc` | **Store** protocol -- `MemStore` ‖ `DatomicStore` (`langchain.db`) + append-only audit ledger + delivery AND invoice history (dual history). The double-actuation guard checks dedicated `:dispatched?`/`:invoiced?` booleans rather than a `:status` value |
-| `src/provisiontrade/registry.cljc` | Delivery/invoice draft records (record construction only -- the Provision Trading Governor's checks are direct entity booleans, so there are no pure range-check functions to host here) |
-| `src/provisiontrade/facts.cljc` | Per-jurisdiction, per-regulatory-class (`:food-safety`/`:alcohol-excise`/`:tobacco-excise`) catalog with an official spec-basis citation per entry, honest coverage reporting, and the `:consignment-category` -> `:regulatory-class` many-to-one mapping |
-| `src/provisiontrade/provisiontradeadvisor.cljc` | **ProvisionTradeAdvisor** -- `mock-advisor` ‖ `llm-advisor`; intake/regulatory-verification/delivery/invoice proposals |
-| `src/provisiontrade/governor.cljc` | **Provision Trading Governor** -- 10 HARD checks (spec-basis · evidence-incomplete · credit-uncleared · contract-missing · food-safety-certificate-missing · alcohol-excise-license-missing · tobacco-excise-age-verification-missing · counterparty-sanctions-flag-unresolved · already-dispatched · already-invoiced) + 1 soft (confidence/actuation gate) |
-| `src/provisiontrade/phase.cljc` | **Phase 0→3** -- read-only → assisted intake → assisted verify → supervised (delivery/invoice always human; order intake is the ONLY auto-eligible op, no direct capital risk) |
-| `src/provisiontrade/operation.cljc` | **OperationActor** -- langgraph StateGraph |
-| `src/provisiontrade/sim.cljc` | demo driver |
+| `src/provisiontrade/store.cljk` | **Store** protocol -- `MemStore` ‖ `DatomicStore` (`langchain.db`) + append-only audit ledger + delivery AND invoice history (dual history). The double-actuation guard checks dedicated `:dispatched?`/`:invoiced?` booleans rather than a `:status` value |
+| `src/provisiontrade/registry.cljk` | Delivery/invoice draft records (record construction only -- the Provision Trading Governor's checks are direct entity booleans, so there are no pure range-check functions to host here) |
+| `src/provisiontrade/facts.cljk` | Per-jurisdiction, per-regulatory-class (`:food-safety`/`:alcohol-excise`/`:tobacco-excise`) catalog with an official spec-basis citation per entry, honest coverage reporting, and the `:consignment-category` -> `:regulatory-class` many-to-one mapping |
+| `src/provisiontrade/provisiontradeadvisor.cljk` | **ProvisionTradeAdvisor** -- `mock-advisor` ‖ `llm-advisor`; intake/regulatory-verification/delivery/invoice proposals |
+| `src/provisiontrade/governor.cljk` | **Provision Trading Governor** -- 10 HARD checks (spec-basis · evidence-incomplete · credit-uncleared · contract-missing · food-safety-certificate-missing · alcohol-excise-license-missing · tobacco-excise-age-verification-missing · counterparty-sanctions-flag-unresolved · already-dispatched · already-invoiced) + 1 soft (confidence/actuation gate) |
+| `src/provisiontrade/phase.cljk` | **Phase 0→3** -- read-only → assisted intake → assisted verify → supervised (delivery/invoice always human; order intake is the ONLY auto-eligible op, no direct capital risk) |
+| `src/provisiontrade/operation.cljk` | **OperationActor** -- langgraph StateGraph |
+| `src/provisiontrade/sim.cljk` | demo driver |
 | `test/provisiontrade/*_test.clj` | governor contract · phase invariants · store parity · registry conformance · facts coverage |
 
 ## Business-process coverage (honest)
