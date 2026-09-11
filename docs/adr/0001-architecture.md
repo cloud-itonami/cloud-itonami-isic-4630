@@ -364,7 +364,7 @@ terms (warehouse automation is real and load-bearing for THIS actor's
   categories than genuinely distinct regulatory regimes.
 - `MemStore` || `DatomicStore` parity is proven by
   `test/provisiontrade/store_contract_test.cljk`.
-- The demo (`clojure -M:dev:run`) walks FOUR clean lifecycles (one food
+- The demo (`kbb -M:dev:run`) walks FOUR clean lifecycles (one food
   order, one non-alcoholic-beverage order, one alcoholic-beverage
   order, one tobacco order) end-to-end, plus every HARD-hold scenario
   (no spec-basis, credit-uncleared, contract-missing, food-safety-

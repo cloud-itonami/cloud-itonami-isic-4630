@@ -166,9 +166,9 @@ proposal still always routes to a human.
 ## Run
 
 ```bash
-clojure -M:dev:run     # walk four clean lifecycles (food, non-alcoholic beverage, alcoholic beverage, tobacco) plus every HARD-hold case, through the actor
-clojure -M:dev:test    # governor contract · phase invariants · store parity · registry conformance · facts coverage
-clojure -M:lint        # clj-kondo (errors fail; CI mirrors this)
+kbb -M:dev:run     # walk four clean lifecycles (food, non-alcoholic beverage, alcoholic beverage, tobacco) plus every HARD-hold case, through the actor
+kbb -M:dev:test    # governor contract · phase invariants · store parity · registry conformance · facts coverage
+kbb -M:lint        # clj-kondo (errors fail; CI mirrors this)
 ```
 
 ## Robotics premise
