@@ -151,7 +151,7 @@ ISIC 4630) and to the three `:social-impact` tags in `blueprint.edn`
 (`:food-safety`, `:public-health`, `:transparency`).
 
 This is the rule the companion contract test
-(`test/provisiontrade/governor_contract_test.clj`) encodes end-to-end:
+(`test/provisiontrade/governor_contract_test.cljk`) encodes end-to-end:
 the ProvisionTradeAdvisor never dispatches a consignment to a
 counterparty or settles an invoice the Provision Trading Governor would
 reject, `:delivery/dispatch` and `:invoice/settle` NEVER auto-commit at
