@@ -1,0 +1,34 @@
+;; What this vertical's robot physically does, declared for
+;; kotoba.robotics.process (kotoba-lang/robotics). `kbb -M:dev:physics` runs it.
+;;
+;; README "Robotics premise": an autonomous warehouse pallet-picking/staging
+;; robot picks, packs, palletizes and stages goods at the
+;; food/beverage/tobacco wholesaler (ISIC 4630). The physical work: pulling
+;; cooked chilled product down to storage temperature in the chiller before
+;; it is staged, and the pallet AGV stopping inside its safety field.
+;;
+;; Every number without a cited source is marked `estimate` in its :basis.
+;; Replacing an estimate with a sourced value is this bot's growth work.
+{:physics/schema "itonami.physical-ai.spec.v1"
+ :repo "cloud-itonami/cloud-itonami-isic-4630"
+ :cases
+ [{:id :chill-cooked-product
+   :kind :thermal
+   :procedure "cartons of cooked ready meals received warm (21 C) from the co-packer are pulled down in the 0 C blast chiller until the carton centre reaches 5 C (half-thickness swept; the back face is the symmetry plane)"
+   :params {:conductivity-w-mk 0.45 :density-kg-m3 1050.0 :specific-heat-j-kgk 3500.0
+            :t0-c 21.0 :t-hot-c 0.0 :h-front-w-m2k 10.0 :t-back-ambient-c 0.0 :h-back-w-m2k 0.0
+            :threshold-c 5.0 :threshold-direction :falling :duration-s 86400.0 :nodes 11}
+   :sweep {:param :thickness-m :values [0.010 0.015 0.020 0.030 0.040]}
+   :quantity :time-to-threshold-s
+   :limit {:max 14400.0 :basis "US FDA Food Code 3-501.14(A): cooked TCS food cooled from 57 C to 21 C within 2 h and to 5 C within 6 h in total, i.e. at most 4 h for the 21 -> 5 C stage"}
+   :boundary {:lo 0.005 :hi 0.06}}
+  {:id :pallet-agv-protective-stop
+   :kind :transport
+   :procedure "pallet AGV carrying a 900 kg pallet across the dispatch floor at 2 m/s brakes to a stop when a person enters its scanner field"
+   :params {:mass-kg 1500.0 :payload-kg 900.0 :distance-m 60.0 :v-max-mps 2.0 :a-max-mps2 0.5
+            :drive-force-n 3000.0 :crr 0.015 :cog-height-m 0.50 :payload-cog-height-m 1.10
+            :support-half-length-m 0.60 :max-time-s 1200.0}
+   :sweep {:param :brake-decel-mps2 :values [0.5 1.0 1.5 2.0 3.0]}
+   :quantity :stopping-distance-m
+   :limit {:max 1.2 :basis "estimate: length of the AGV's forward protective field on its safety laser scanner"}
+   :boundary {:lo 0.3 :hi 5.0}}]}
