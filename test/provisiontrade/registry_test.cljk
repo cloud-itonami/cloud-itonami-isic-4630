@@ -1,5 +1,5 @@
 (ns provisiontrade.registry-test
-  (:require [clojure.test :refer [deftest is]]
+  (:require [kotoba.test :refer [deftest is]]
             [provisiontrade.registry :as r]))
 
 ;; The provision-trading domain checks (credit-clearance, contract-on-
